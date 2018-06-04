@@ -6,8 +6,9 @@ const bodyParser = require('body-parser');
 const {ObjectID} = require('mongodb');
 
 var {mongoose} = require('./db/mongoose');
-var {Todo} = require('./models/todo');
+var {Engagement} = require('./models/engagement');
 var {User} = require('./models/user');
+var {Vendor} = require('./models/vendor');
 var {authenticate} = require('./middleware/authenticate');
 
 var app = express();
@@ -15,92 +16,101 @@ const port = process.env.PORT;
 
 app.use(bodyParser.json());
 
-app.post('/todos', authenticate, (req, res) => {
-  var todo = new Todo({
-    text: req.body.text,
-    _creator: req.user._id
+app.post('/engagements', authenticate, (req, res) => {
+  var engagement = new Engagement({
+    engagementId: req.body.engagementId,
+    scopeDescription: req.body.scoeDescription,
+    riskRating: req.body.riskRating,
+    lastAssessedOn: req.body.lastAssessedOn,
+    dueOn: req.body.dueOn,
+    _burm: req.body._burm,
+    _sr: req.body._sr,
+    _tpm: req.body._tpm,
+    _vspoc: req.body._vspoc,
   });
 
-  todo.save().then((doc) => {
+  engagement.save().then((doc) => {
     res.send(doc);
   }, (e) => {
     res.status(400).send(e);
   });
 });
 
-app.get('/todos', authenticate, (req, res) => {
-  Todo.find({
-    _creator: req.user._id
-  }).then((todos) => {
-    res.send({todos});
-  }, (e) => {
-    res.status(400).send(e);
-  });
-});
+// app.get('/engagements', authenticate, (req, res) => {
+//   Todo.find({
+//     _creator: req.user._id
+//   }).then((todos) => {
+//     res.send({todos});
+//   }, (e) => {
+//     res.status(400).send(e);
+//   });
+// });
 
-app.get('/todos/:id', authenticate, (req, res) => {
+app.get('/engagements/:id', authenticate, (req, res) => {
   var id = req.params.id;
 
   if (!ObjectID.isValid(id)) {
     return res.status(404).send();
   }
 
-  Todo.findOne({
-    _id: id,
-    _creator: req.user._id
-  }).then((todo) => {
-    if (!todo) {
+  Engagement.findOne({
+    $and: [ {engagementId: id},
+            {$or: [{role: { $in: ['admin','assessor','auditor']}},{_vspoc: req.user._id}]}
+    ]
+  }).then((engagement) => {
+    if (!engagement) {
       return res.status(404).send();
     }
 
-    res.send({todo});
+    res.send({engagement});
   }).catch((e) => {
     res.status(400).send();
   });
 });
 
-app.delete('/todos/:id', authenticate, (req, res) => {
+app.delete('/engagements/:id', authenticate, (req, res) => {
   var id = req.params.id;
 
   if (!ObjectID.isValid(id)) {
     return res.status(404).send();
   }
 
-  Todo.findOneAndRemove({
-    _id: id,
-    _creator: req.user._id
-  }).then((todo) => {
-    if (!todo) {
+  Engagement.findOneAndRemove({
+    $and: [ {engagementId: id},
+      {role: { $eq: 'admin'}}
+    ]
+  }).then((engagement) => {
+    if (!engagement) {
       return res.status(404).send();
     }
 
-    res.send({todo});
+    res.send({engagement});
   }).catch((e) => {
     res.status(400).send();
   });
 });
 
-app.patch('/todos/:id', authenticate, (req, res) => {
+app.patch('/engagements/:id', authenticate, (req, res) => {
   var id = req.params.id;
-  var body = _.pick(req.body, ['text', 'completed']);
+  var body = _.pick(req.body, ['engagementId', 'scopeDescription','riskRating','lastAssessedOn','dueOn','_burm','_sr','_tpm','_vspoc']);
 
   if (!ObjectID.isValid(id)) {
     return res.status(404).send();
   }
 
-  if (_.isBoolean(body.completed) && body.completed) {
-    body.completedAt = new Date().getTime();
-  } else {
-    body.completed = false;
-    body.completedAt = null;
-  }
+  // if (_.isBoolean(body.completed) && body.completed) {
+  //   body.completedAt = new Date().getTime();
+  // } else {
+  //   body.completed = false;
+  //   body.completedAt = null;
+  // }
 
-  Todo.findOneAndUpdate({_id: id, _creator: req.user._id}, {$set: body}, {new: true}).then((todo) => {
-    if (!todo) {
+  Engagement.findOneAndUpdate({_id: id}, {$set: body}, {new: true}).then((engagement) => {
+    if (!engagement) {
       return res.status(404).send();
     }
 
-    res.send({todo});
+    res.send({engagement});
   }).catch((e) => {
     res.status(400).send();
   })
@@ -108,7 +118,7 @@ app.patch('/todos/:id', authenticate, (req, res) => {
 
 // POST /users
 app.post('/users', (req, res) => {
-  var body = _.pick(req.body, ['email', 'password']);
+  var body = _.pick(req.body, ['email', 'password','fName','mName','lName','workPhone','mobilePhone']);
   var user = new User(body);
 
   user.save().then(() => {

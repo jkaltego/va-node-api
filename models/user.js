@@ -5,39 +5,32 @@ const _ = require('lodash');
 const bcrypt = require('bcryptjs');
 
 var UserSchema = new mongoose.Schema({
-  email: {
-    type: String,
-    required: true,
-    trim: true,
-    minlength: 1,
-    unique: true,
-    validate: {
-      validator: validator.isEmail,
-      message: '{VALUE} is not a valid email'
-    }
+  email: { type: String, required: true, trim: true, minlength: 1, unique: true, 
+    validate: {validator: validator.isEmail, message: '{VALUE} is not a valid email'}
   },
-  password: {
-    type: String,
-    require: true,
-    minlength: 6
-  },
+  password: {type: String, require: true, trim: true, minlength: 8},
+  fName: {type: String, required: true, trim: true, minlength: 2, maxlength: 25},
+  mName: {type: String, required: false, trim: true, maxlength: 25},
+  lName: {type: String, required: true, trim: true, minlength: 2, maxlength: 25},
+  role: {type: String, required: true, default: vendor},
+  workPhone: {type: String, required: false, minlength: 10},
+  mobilePhone: {type: String, required: false, minlength: 10},
+  resetPassword: {type: Boolean, default: false},
+  lastChangedOn: {type: Date},  
+  isDisabled: {type: Boolean, default: false},
+  disabledOn: {type: Date},
+  lastLogin: {type: Date},  
   tokens: [{
-    access: {
-      type: String,
-      required: true
-    },
-    token: {
-      type: String,
-      required: true
-    }
-  }]
+    access: {type: String, required: true},
+    token: {type: String, required: true},
+  }],
 });
 
 UserSchema.methods.toJSON = function () {
   var user = this;
   var userObject = user.toObject();
 
-  return _.pick(userObject, ['_id', 'email']);
+  return _.pick(userObject, ['_id', 'email','fNamr','lName','isDisabled','role','lastLogin','workPhone','mobilePhone']);
 };
 
 UserSchema.methods.generateAuthToken = function () {
@@ -117,4 +110,4 @@ UserSchema.pre('save', function (next) {
 
 var User = mongoose.model('User', UserSchema);
 
-module.exports = {User}
+module.exports = {User};
